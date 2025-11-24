@@ -651,115 +651,107 @@ elif page == "Pipeline Board":
         
         st.markdown("---")
         
-        # Priority Leads Section
-        st.markdown("### 🎯 Priority Leads (Top 8)")
+# ==================== PRIORITY LEADS CALCULATION ====================
+st.markdown("### 🎯 Priority Leads (Top 8)")
+
+priority_list = []
+weights = st.session_state.weights
+
+for _, row in df.iterrows():
+    score, _, _, _, _, _, time_left = compute_priority_for_lead_row(row, weights)
+    
+    # SLA calculation
+    sla_entered = row.get("sla_entered_at") or row.get("created_at")
+    if isinstance(sla_entered, str):
+        try: 
+            sla_entered = datetime.fromisoformat(sla_entered)
+        except: 
+            sla_entered = datetime.utcnow()
+    elif pd.isna(sla_entered):
+        sla_entered = datetime.utcnow()
         
-        # Calculate priorities
-        priority_list = []
-        for _, row in df.iterrows():
-            score, _, _, _, _, _, time_left = compute_priority_for_lead_row(row, weights)
-            
-            # SLA calculation
-            sla_entered = row.get("sla_entered_at") or row.get("created_at")
-            if isinstance(sla_entered, str):
-                try: 
-                    sla_entered = datetime.fromisoformat(sla_entered)
-                except: 
-                    sla_entered = datetime.utcnow()
-            deadline = sla_entered + timedelta(hours=int(row.get("sla_hours") or 24))
-            remaining = deadline - datetime.utcnow()
-            overdue = remaining.total_seconds() <= 0
-            
-            # Predicted conversion
-            prob = None
-            if lead_model is not None:
-                try: 
-                    prob = predict_lead_probability(lead_model, row)
-                except: 
-                    prob = None
-            
-            priority_list.append({
-                "id": int(row["id"]),
-                "contact_name": row.get("contact_name") or "No name",
-                "estimated_value": float(row.get("estimated_value") or 0.0),
-                "time_left_hours": float(remaining.total_seconds() / 3600.0),
-                "priority_score": score,
-                "status": row.get("status"),
-                "sla_overdue": overdue,
-                "sla_deadline": deadline,
-                "conversion_prob": prob,
-                "damage_type": row.get("damage_type", "Unknown")
-            })
+    deadline = sla_entered + timedelta(hours=int(row.get("sla_hours") or 24))
+    remaining = deadline - datetime.utcnow()
+    overdue = remaining.total_seconds() <= 0
+    
+    priority_list.append({
+        "id": int(row["id"]),
+        "contact_name": row.get("contact_name") or "No name",
+        "estimated_value": float(row.get("estimated_value") or 0.0),
+        "time_left_hours": float(remaining.total_seconds() / 3600.0),
+        "priority_score": score,
+        "status": row.get("status"),
+        "sla_overdue": overdue,
+        "sla_deadline": deadline,
+        "damage_type": row.get("damage_type", "Unknown")
+    })
+
+pr_df = pd.DataFrame(priority_list).sort_values("priority_score", ascending=False)
+
+# ==================== PRIORITY LEADS DISPLAY (FIXED) ====================
+if not pr_df.empty:
+    for idx_priority, r in pr_df.head(8).iterrows():
+        score = r["priority_score"]
+        status_color = stage_colors.get(r["status"], "#ffffff")
         
-        pr_df = pd.DataFrame(priority_list).sort_values("priority_score", ascending=False)
+        # Priority badge color
+        if score >= 0.7:
+            priority_color = "#ef4444"
+            priority_label = "🔴 CRITICAL"
+        elif score >= 0.45:
+            priority_color = "#f97316"
+            priority_label = "🟠 HIGH"
+        else:
+            priority_color = "#22c55e"
+            priority_label = "🟢 NORMAL"
         
-        if not pr_df.empty:
-            for _, r in pr_df.head(8).iterrows():
-                score = r["priority_score"]
-                status_color = stage_colors.get(r["status"], "#ffffff")
-                
-                # Priority badge color
-                if score >= 0.7:
-                    priority_color = "#ef4444"
-                    priority_label = "🔴 CRITICAL"
-                elif score >= 0.45:
-                    priority_color = "#f97316"
-                    priority_label = "🟠 HIGH"
-                else:
-                    priority_color = "#22c55e"
-                    priority_label = "🟢 NORMAL"
-                
-                # SLA status
-                if r["sla_overdue"]:
-                    sla_html = f"<span style='color:#ef4444;font-weight:700;'>❗ OVERDUE</span>"
-                else:
-                    hours_left = int(r['time_left_hours'])
-                    mins_left = int((r['time_left_hours'] * 60) % 60)
-                    sla_html = f"<span style='color:#2563eb;font-weight:600;'>⏳ {hours_left}h {mins_left}m left</span>"
-                
-                # Conversion probability
-                conv_html = ""
-                if r["conversion_prob"] is not None:
-                    conv_pct = r["conversion_prob"] * 100
-                    conv_color = "#22c55e" if conv_pct > 70 else ("#f97316" if conv_pct > 40 else "#ef4444")
-                    conv_html = f"<span style='color:{conv_color};font-weight:600;margin-left:12px;'>📊 {conv_pct:.0f}% Win Prob</span>"
-                
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="flex: 1;">
-                            <div style="margin-bottom: 8px;">
-                                <span style="color:{priority_color};font-weight:700;font-size:14px;">{priority_label}</span>
-                                <span class="stage-badge" style="background:{status_color}20;color:{status_color};border:1px solid {status_color}40;">
-                                    {r['status']}
-                                </span>
-                            </div>
-                            <div style="font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 4px;">
-                                #{int(r['id'])} — {r['contact_name']}
-                            </div>
-                            <div style="font-size: 13px; color: #93a0ad; margin-bottom: 8px;">
-                                {r['damage_type'].title()} | Est: <span style="color:#22c55e;font-weight:700;">${r['estimated_value']:,.0f}</span>
-                            </div>
-                            <div style="font-size: 13px;">
-                                {sla_html}
-                                {conv_html}
-                            </div>
-                        </div>
-                        <div style="text-align: right; padding-left: 20px;">
-                            <div style="font-size: 36px; font-weight: 700; color:{priority_color};">
-                                {score:.2f}
-                            </div>
-                            <div style="font-size: 11px; color: #93a0ad; text-transform: uppercase;">
-                                Priority
-                            </div>
-                        </div>
+        # SLA status
+        if r["sla_overdue"]:
+            sla_html = "<span style='color:#ef4444;font-weight:700;'>❗ OVERDUE</span>"
+        else:
+            hours_left = int(r['time_left_hours'])
+            mins_left = int((r['time_left_hours'] * 60) % 60)
+            sla_html = f"<span style='color:#2563eb;font-weight:600;'>⏳ {hours_left}h {mins_left}m left</span>"
+        
+        # Build the card HTML
+        card_html = f"""
+        <div class="metric-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="margin-bottom: 8px;">
+                        <span style="color:{priority_color};font-weight:700;font-size:14px;">{priority_label}</span>
+                        <span style="display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 4px; background:{status_color}20; color:{status_color}; border:1px solid {status_color}40;">
+                            {r['status']}
+                        </span>
+                    </div>
+                    <div style="font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 4px;">
+                        #{int(r['id'])} — {r['contact_name']}
+                    </div>
+                    <div style="font-size: 13px; color: #93a0ad; margin-bottom: 8px;">
+                        {str(r['damage_type']).title()} | Est: <span style="color:#22c55e;font-weight:700;">${r['estimated_value']:,.0f}</span>
+                    </div>
+                    <div style="font-size: 13px;">
+                        {sla_html}
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("No priority leads to display.")
+                <div style="text-align: right; padding-left: 20px;">
+                    <div style="font-size: 36px; font-weight: 700; color:{priority_color};">
+                        {score:.2f}
+                    </div>
+                    <div style="font-size: 11px; color: #93a0ad; text-transform: uppercase;">
+                        Priority
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
         
-        st.markdown("---")
+        # Render the HTML
+        st.markdown(card_html, unsafe_allow_html=True)
+else:
+    st.info("No priority leads to display.")
+
+st.markdown("---")
         
         # Detailed Lead Cards (Expandable)
         st.markdown("### 📋 All Leads")

@@ -650,26 +650,6 @@ elif page == "Pipeline Board":
         
         st.markdown("---")
         
-        # ==================== PRIORITY LEADS CALCULATION ====================
-        st.markdown("### 🎯 Priority Leads (Top 8)")
-        
-        priority_list = []
-        for _, row in df.iterrows():
-            score, _, _, _, _, _, time_left = compute_priority_for_lead_row(row, weights)
-            
-            # SLA calculation
-            sla_entered = row.get("sla_entered_at") or row.get("created_at")
-            if isinstance(sla_entered, str):
-                try: 
-                    sla_entered = datetime.fromisoformat(sla_entered)
-                except: 
-                    sla_entered = datetime.utcnow()
-            elif pd.isna(sla_entered):
-                sla_entered = datetime.utcnow()
-                
-            deadline = sla_entered + timedelta(hours=int(row.get("sla_hours") or 24))
-            remaining = deadline - datetime.utcnow()
-            overdue = remaining.total_seconds() <= 0
             
             # Predicted conversion (if model exists)
             prob = None

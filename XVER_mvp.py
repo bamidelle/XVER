@@ -463,7 +463,7 @@ if page == "Leads / Capture":
 
 
 # Pipeline Dashboard Section - Insert this into your page == "Pipeline Board" section
-# --- Page: Pipeline Board (COMPLETE GOOGLE ADS-STYLE DASHBOARD)
+# --- Page: Pipeline Board (KPI CARDS + STAGE BREAKDOWN ONLY)
 elif page == "Pipeline Board":
     st.header("🧭 Pipeline Dashboard")
     s = get_session()
@@ -473,13 +473,6 @@ elif page == "Pipeline Board":
         st.info("No leads yet. Create one from Lead Capture.")
     else:
         df = leads_df(s)
-        weights = st.session_state.weights
-        
-        # Load ML model if exists
-        try:
-            lead_model = joblib.load('lead_conversion_model.pkl')
-        except:
-            lead_model = None
         
         # ==================== GOOGLE ADS-STYLE CSS ====================
         st.markdown("""
@@ -537,14 +530,6 @@ elif page == "Pipeline Board":
             height: 100%;
             border-radius: 4px;
             transition: width 0.3s ease;
-        }
-        .stage-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin: 4px;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -649,6 +634,15 @@ elif page == "Pipeline Board":
                 """, unsafe_allow_html=True)
         
         st.markdown("---")
+        
+        # Display leads table (simple view)
+        st.markdown("### 📋 All Leads")
+        if not df.empty:
+            display_df = df[['id', 'contact_name', 'status', 'damage_type', 'estimated_value', 'created_at']].copy()
+            display_df['estimated_value'] = display_df['estimated_value'].fillna(0).apply(lambda x: f"${x:,.0f}")
+            st.dataframe(display_df.sort_values('created_at', ascending=False), use_container_width=True)
+        else:
+            st.info("No leads to display.")
         
             
             # Predicted conversion (if model exists)

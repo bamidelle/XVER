@@ -463,7 +463,8 @@ if page == "Leads / Capture":
 
 
 # Pipeline Dashboard Section - Insert this into your page == "Pipeline Board" section
-# --- Page: Pipeline Board (COMPLETE GOOGLE ADS-STYLE DASHBOARD)
+# Pipeline Dashboard Section - Insert this into your page == "Pipeline Board" section
+
 elif page == "Pipeline Board":
     st.header("🧭 Pipeline Dashboard")
     s = get_session()
@@ -481,7 +482,7 @@ elif page == "Pipeline Board":
         except:
             lead_model = None
         
-        # ==================== GOOGLE ADS-STYLE CSS ====================
+        # ==================== GOOGLE ADS-STYLE CARDS ====================
         st.markdown("""
         <style>
         .metric-card {
@@ -549,10 +550,10 @@ elif page == "Pipeline Board":
         </style>
         """, unsafe_allow_html=True)
         
-        # ==================== CALCULATE METRICS ====================
+        # Calculate metrics
         total_leads = len(df)
         qualified_leads = len(df[df['qualified'] == True])
-        total_value = df['estimated_value'].fillna(0).sum()
+        total_value = df['estimated_value'].sum()
         awarded_leads = len(df[df['status'] == LeadStatus.AWARDED])
         lost_leads = len(df[df['status'] == LeadStatus.LOST])
         
@@ -574,7 +575,7 @@ elif page == "Pipeline Board":
             LeadStatus.LOST: "#ef4444"
         }
         
-        # ==================== TOP KPI CARDS ====================
+        # Top row - Key metrics cards
         st.markdown("### 📊 Key Performance Indicators")
         col1, col2, col3, col4 = st.columns(4)
         
@@ -625,7 +626,7 @@ elif page == "Pipeline Board":
         
         st.markdown("---")
         
-        # ==================== STAGE BREAKDOWN CARDS ====================
+        # Stage breakdown cards
         st.markdown("### 📈 Pipeline Stages")
         
         stage_cols = st.columns(len(LeadStatus.ALL))
@@ -650,9 +651,10 @@ elif page == "Pipeline Board":
         
         st.markdown("---")
         
-        # ==================== PRIORITY LEADS CALCULATION ====================
+        # Priority Leads Section
         st.markdown("### 🎯 Priority Leads (Top 8)")
         
+        # Calculate priorities
         priority_list = []
         for _, row in df.iterrows():
             score, _, _, _, _, _, time_left = compute_priority_for_lead_row(row, weights)
@@ -664,14 +666,11 @@ elif page == "Pipeline Board":
                     sla_entered = datetime.fromisoformat(sla_entered)
                 except: 
                     sla_entered = datetime.utcnow()
-            elif pd.isna(sla_entered):
-                sla_entered = datetime.utcnow()
-                
             deadline = sla_entered + timedelta(hours=int(row.get("sla_hours") or 24))
             remaining = deadline - datetime.utcnow()
             overdue = remaining.total_seconds() <= 0
             
-            # Predicted conversion (if model exists)
+            # Predicted conversion
             prob = None
             if lead_model is not None:
                 try: 
@@ -694,9 +693,8 @@ elif page == "Pipeline Board":
         
         pr_df = pd.DataFrame(priority_list).sort_values("priority_score", ascending=False)
         
-        # ==================== PRIORITY LEADS DISPLAY ====================
         if not pr_df.empty:
-            for idx_priority, r in pr_df.head(8).iterrows():
+            for _, r in pr_df.head(8).iterrows():
                 score = r["priority_score"]
                 status_color = stage_colors.get(r["status"], "#ffffff")
                 
@@ -763,7 +761,7 @@ elif page == "Pipeline Board":
         
         st.markdown("---")
         
-        # ==================== DETAILED LEAD CARDS ====================
+        # Detailed Lead Cards (Expandable)
         st.markdown("### 📋 All Leads")
         
         for lead in leads:
@@ -773,7 +771,7 @@ elif page == "Pipeline Board":
             card_title = f"#{lead.id} — {lead.contact_name or 'No name'} — {lead.damage_type or 'Unknown'} — ${est_val:,.0f}"
             
             with st.expander(card_title, expanded=False):
-                # ==================== LEAD INFO SECTION ====================
+                # Lead info section
                 colA, colB = st.columns([3, 1])
                 
                 with colA:
@@ -832,7 +830,7 @@ elif page == "Pipeline Board":
                 
                 st.markdown("---")
                 
-                # ==================== QUICK CONTACT BUTTONS ====================
+                # Quick contact buttons
                 qc1, qc2, qc3, qc4 = st.columns([1, 1, 1, 4])
                 phone = (lead.contact_phone or "").strip()
                 email = (lead.contact_email or "").strip()
@@ -870,22 +868,22 @@ elif page == "Pipeline Board":
                 
                 st.markdown("---")
                 
-                # ==================== LEAD UPDATE FORM ====================
-                with st.form(f"update_lead_form_{lead.id}"):
+                # Lead update form
+                with st.form(f"update_lead_{lead.id}"):
                     st.markdown("#### Update Lead")
                     
                     ucol1, ucol2 = st.columns(2)
                     with ucol1:
-                        new_status = st.selectbox("Status", LeadStatus.ALL, index=LeadStatus.ALL.index(lead.status), key=f"upd_status_{lead.id}")
-                        new_assigned = st.text_input("Assigned to", value=lead.assigned_to or "", key=f"upd_assign_{lead.id}")
-                        contacted = st.checkbox("Contacted", value=lead.contacted, key=f"upd_contacted_{lead.id}")
+                        new_status = st.selectbox("Status", LeadStatus.ALL, index=LeadStatus.ALL.index(lead.status), key=f"status_{lead.id}")
+                        new_assigned = st.text_input("Assigned to", value=lead.assigned_to or "", key=f"assign_{lead.id}")
+                        contacted = st.checkbox("Contacted", value=lead.contacted, key=f"contacted_{lead.id}")
                     
                     with ucol2:
-                        inspection_scheduled = st.checkbox("Inspection Scheduled", value=lead.inspection_scheduled, key=f"upd_insp_sched_{lead.id}")
-                        inspection_completed = st.checkbox("Inspection Completed", value=lead.inspection_completed, key=f"upd_insp_comp_{lead.id}")
-                        estimate_submitted = st.checkbox("Estimate Submitted", value=lead.estimate_submitted, key=f"upd_est_sub_{lead.id}")
+                        inspection_scheduled = st.checkbox("Inspection Scheduled", value=lead.inspection_scheduled, key=f"insp_sched_{lead.id}")
+                        inspection_completed = st.checkbox("Inspection Completed", value=lead.inspection_completed, key=f"insp_comp_{lead.id}")
+                        estimate_submitted = st.checkbox("Estimate Submitted", value=lead.estimate_submitted, key=f"est_sub_{lead.id}")
                     
-                    new_notes = st.text_area("Notes", value=lead.notes or "", key=f"upd_notes_{lead.id}")
+                    new_notes = st.text_area("Notes", value=lead.notes or "", key=f"notes_{lead.id}")
                     
                     if st.form_submit_button("💾 Update Lead"):
                         lead.status = new_status
@@ -901,7 +899,7 @@ elif page == "Pipeline Board":
                         st.success(f"Lead #{lead.id} updated!")
                         st.rerun()
                 
-                # ==================== ESTIMATES SECTION ====================
+                # Estimates section
                 st.markdown("#### 💰 Estimates")
                 lead_estimates = s.query(Estimate).filter(Estimate.lead_id == lead.id).all()
                 
@@ -923,25 +921,21 @@ elif page == "Pipeline Board":
                                     {est.created_at.strftime('%Y-%m-%d') if est.created_at else '—'}
                                 </div>
                             </div>
-                            {f"<div style='margin-top:8px;color:#93a0ad;font-size:12px;'>{est.details}</div>" if est.details else ""}
                         </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.info("No estimates yet.")
                 
-                # ==================== CREATE ESTIMATE FORM ====================
-                with st.form(f"create_estimate_form_{lead.id}"):
+                # Create estimate form
+                with st.form(f"create_estimate_{lead.id}"):
                     st.markdown("**Create New Estimate**")
-                    est_amount = st.number_input("Amount ($)", min_value=0.0, step=100.0, key=f"new_est_amt_{lead.id}")
-                    est_details = st.text_area("Details", key=f"new_est_det_{lead.id}")
+                    est_amount = st.number_input("Amount ($)", min_value=0.0, step=100.0, key=f"est_amt_{lead.id}")
+                    est_details = st.text_area("Details", key=f"est_det_{lead.id}")
                     
                     if st.form_submit_button("➕ Create Estimate"):
-                        if est_amount > 0:
-                            create_estimate(s, lead.id, est_amount, est_details)
-                            st.success("Estimate created!")
-                            st.rerun()
-                        else:
-                            st.warning("Please enter an amount greater than 0")
+                        create_estimate(s, lead.id, est_amount, est_details)
+                        st.success("Estimate created!")
+                        st.rerun()
         # Priority summary
         priority_list = []
         for _, row in df.iterrows():

@@ -746,25 +746,25 @@ if not pr_df.empty:
             </div>
         </div>
         """
-        
-        # Render the HTML
+# Render the HTML
         st.markdown(card_html, unsafe_allow_html=True)
 else:
     st.info("No priority leads to display.")
 
 st.markdown("---")
         
-        # Detailed Lead Cards (Expandable)
-    st.markdown("### 📋 All Leads")  
-        for lead in leads:
-            status_color = stage_colors.get(lead.status, "#ffffff")
-            est_val = lead.estimated_value or 0
-            
-            card_title = f"#{lead.id} — {lead.contact_name or 'No name'} — {lead.damage_type or 'Unknown'} — ${est_val:,.0f}"
-            
-            with st.expander(card_title, expanded=False):
-                # Lead info section
-                colA, colB = st.columns([3, 1])
+# Detailed Lead Cards (Expandable)
+st.markdown("### 📋 All Leads")  
+
+for lead in leads:
+    status_color = stage_colors.get(lead.status, "#ffffff")
+    est_val = lead.estimated_value or 0
+    
+    card_title = f"#{lead.id} — {lead.contact_name or 'No name'} — {lead.damage_type or 'Unknown'} — ${est_val:,.0f}"
+    
+    with st.expander(card_title, expanded=False):
+        # Lead info section
+        colA, colB = st.columns([3, 1])
                 
                 with colA:
                     st.markdown(f"""

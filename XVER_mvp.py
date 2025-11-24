@@ -755,8 +755,7 @@ else:
 st.markdown("---")
         
         # Detailed Lead Cards (Expandable)
-st.markdown("### 📋 All Leads")
-        
+    st.markdown("### 📋 All Leads")  
         for lead in leads:
             status_color = stage_colors.get(lead.status, "#ffffff")
             est_val = lead.estimated_value or 0

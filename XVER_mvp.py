@@ -652,6 +652,7 @@ elif page == "Pipeline Board":
         st.markdown("---")
         
 # ==================== PRIORITY LEADS CALCULATION ====================
+# ==================== PRIORITY LEADS CALCULATION ====================
 st.markdown("### 🎯 Priority Leads (Top 8)")
 
 priority_list = []

@@ -461,16 +461,7 @@ if page == "Leads / Capture":
     else:
         st.dataframe(df.sort_values("created_at", ascending=False).head(50))
 
-# --- Page: Pipeline Board
-elif page == "Pipeline Board":
-    st.header("🧭 Pipeline Board — Rows (editable)")
-    s = get_session()
-    leads = s.query(Lead).order_by(Lead.created_at.desc()).all()
-    if not leads:
-        st.info("No leads yet. Create one from Lead Capture.")
-    else:
-        df = leads_df(s)
-        weights = st.session_state.weights
+
 # Pipeline Dashboard Section - Insert this into your page == "Pipeline Board" section
 
 elif page == "Pipeline Board":
